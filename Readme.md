@@ -117,6 +117,7 @@ WITH scored_messages AS (
     message_text,
     utc_timestamp,
     formatted_date,
+    is_sent,
     (
       CASE WHEN LOWER(message_text) LIKE '%indiana%' THEN 1 ELSE 0 END +
       CASE WHEN LOWER(message_text) LIKE '%job%' THEN 1 ELSE 0 END +
@@ -170,6 +171,10 @@ WITH scored_messages AS (
   FROM conversation_recent
 )
 SELECT
+  CASE
+    WHEN is_sent = 1 THEN 'You'
+    ELSE 'Them'
+  END AS sender,
   message_text,
   utc_timestamp,
   formatted_date,
