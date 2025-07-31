@@ -96,3 +96,87 @@ The `conversation_recent` table contains:
 
 ## Note
 This process was necessary because modern macOS stores iMessage content in attributedBody BLOBs when iCloud Messages is enabled, making simple SQL queries insufficient for text extraction.
+
+# Searching the output
+
+## filter by date range in nano seconds:
+
+```sql
+DELETE FROM conversation_recent
+WHERE utc_timestamp >= 757382400000000000;  -- January 1, 2025 in Apple nanoseconds
+
+DELETE FROM conversation_recent
+WHERE utc_timestamp < 694224000000000000;  -- June 1, 2023 in Apple nanoseconds
+```
+
+
+
+```sql
+WITH scored_messages AS (
+  SELECT
+    message_text,
+    utc_timestamp,
+    formatted_date,
+    (
+      CASE WHEN LOWER(message_text) LIKE '%indiana%' THEN 1 ELSE 0 END +
+      CASE WHEN LOWER(message_text) LIKE '%job%' THEN 1 ELSE 0 END +
+      CASE WHEN LOWER(message_text) LIKE '%pickup%' THEN 1 ELSE 0 END +
+      CASE WHEN LOWER(message_text) LIKE '%pick up%' THEN 1 ELSE 0 END +
+      CASE WHEN LOWER(message_text) LIKE '%dropoff%' THEN 1 ELSE 0 END +
+      CASE WHEN LOWER(message_text) LIKE '%drop off%' THEN 1 ELSE 0 END +
+      CASE WHEN LOWER(message_text) LIKE '%weekend%' THEN 1 ELSE 0 END +
+      CASE WHEN LOWER(message_text) LIKE '%friday%' THEN 1 ELSE 0 END +
+      CASE WHEN LOWER(message_text) LIKE '%saturday%' THEN 1 ELSE 0 END +
+      CASE WHEN LOWER(message_text) LIKE '%i can''t%' THEN 1 ELSE 0 END +
+      CASE WHEN LOWER(message_text) LIKE '%i cant%' THEN 1 ELSE 0 END +
+      CASE WHEN LOWER(message_text) LIKE '%help%' THEN 1 ELSE 0 END
+    ) AS match_score,
+    CASE
+      WHEN LOWER(message_text) LIKE '%indiana%' THEN 'indiana,' ELSE ''
+    END ||
+    CASE
+      WHEN LOWER(message_text) LIKE '%job%' THEN 'job,' ELSE ''
+    END ||
+    CASE
+      WHEN LOWER(message_text) LIKE '%pickup%' THEN 'pickup,' ELSE ''
+    END ||
+    CASE
+      WHEN LOWER(message_text) LIKE '%pick up%' THEN 'pick up,' ELSE ''
+    END ||
+    CASE
+      WHEN LOWER(message_text) LIKE '%dropoff%' THEN 'dropoff,' ELSE ''
+    END ||
+    CASE
+      WHEN LOWER(message_text) LIKE '%drop off%' THEN 'drop off,' ELSE ''
+    END ||
+    CASE
+      WHEN LOWER(message_text) LIKE '%weekend%' THEN 'weekend,' ELSE ''
+    END ||
+    CASE
+      WHEN LOWER(message_text) LIKE '%friday%' THEN 'friday,' ELSE ''
+    END ||
+    CASE
+      WHEN LOWER(message_text) LIKE '%saturday%' THEN 'saturday,' ELSE ''
+    END ||
+    CASE
+      WHEN LOWER(message_text) LIKE '%i can''t%' THEN 'i can''t,' ELSE ''
+    END ||
+    CASE
+      WHEN LOWER(message_text) LIKE '%i cant%' THEN 'i cant,' ELSE ''
+    END ||
+    CASE
+      WHEN LOWER(message_text) LIKE '%help%' THEN 'help,' ELSE ''
+    END AS matched_words
+  FROM conversation_recent
+)
+SELECT
+  message_text,
+  utc_timestamp,
+  formatted_date,
+  match_score,
+  RTRIM(matched_words, ',') AS matched_words
+FROM scored_messages
+WHERE match_score > 0
+ORDER BY match_score DESC, utc_timestamp DESC;
+```
+
